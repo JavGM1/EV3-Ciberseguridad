@@ -60,12 +60,12 @@ y un **commit** (usa el identificador `VULN-xx` en el mensaje del commit).
 
 | Paquete | Versión inicial | Vulnerabilidades (IDs) | Versión final | Origen del cambio (PR de Dependabot / manual) | ¿Pruebas, pip-audit y ZAP siguen OK? Build |
 |---|---|---|---|---|---|
-| Flask | 2.2.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.3 | PR #2 de Dependabot (grupo `python-dependencies`) | Sí, #__ |
-| Werkzeug | 2.2.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.9 | PR #2 de Dependabot | Sí, #__ |
-| Jinja2 | 3.1.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.6 | PR #2 de Dependabot | Sí, #__ |
-| gunicorn | 21.2.0 | [IDs de `pip-audit.txt`, build #1] | 27.0.1 | PR #2 de Dependabot | Sí, #__ |
-| prometheus-client | 0.17.1 | Sin avisos (actualización de mantenimiento) | 0.26.0 | PR #2 de Dependabot | Sí, #__ |
-| pytest (`requirements-dev.txt`) | 8.3.4 | Sin avisos (solo pruebas, no se instala en despliegues) | 9.2.0 | PR #2 de Dependabot | Sí, #__ |
+| Flask | 2.2.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.3 | PR #2 de Dependabot (grupo `python-dependencies`) | Sí, #6 |
+| Werkzeug | 2.2.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.9 | PR #2 de Dependabot | Sí, #6 |
+| Jinja2 | 3.1.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.6 | PR #2 de Dependabot | Sí, #6 |
+| gunicorn | 21.2.0 | [IDs de `pip-audit.txt`, build #1] | 27.0.1 | PR #2 de Dependabot | Sí, #6 |
+| prometheus-client | 0.17.1 | Sin avisos (actualización de mantenimiento) | 0.26.0 | PR #2 de Dependabot | Sí, #6 |
+| pytest (`requirements-dev.txt`) | 8.3.4 | Sin avisos (solo pruebas, no se instala en despliegues) | 9.2.0 | PR #2 de Dependabot | Sí, #6 |
 
 **Proceso.** Dependabot detectó las versiones vulnerables y abrió seis PR (#1 a #6): el #2 agrupa las seis actualizaciones y los demás son actualizaciones individuales de los mismos paquetes. Se revisó el diff del PR #2 (*Files changed*), se fusionó (commit `d6f6a73`) y los PR individuales #1, #3, #4, #5 y #6 se cerraron sin fusionar para evitar conflictos y builds duplicados.
 
@@ -80,10 +80,8 @@ y un **commit** (usa el identificador `VULN-xx` en el mensaje del commit).
 
 ## 6. Trazabilidad
 
-Pega aquí (o adjunta) el `TRAZABILIDAD.md` del último build y completa un recorrido por cada actividad del pipeline:
-
 | Actividad | Hallazgo | Build que lo detectó | Commit / PR que lo resolvió | Build que lo verificó | Versión en producción |
 |---|---|---|---|---|---|
-| Revisión de seguridad (Bandit) | | #__ | | #__ | |
-| Prueba automatizada (OWASP ZAP) | | #__ | | #__ | |
-| Gestión de dependencias (Dependabot) | | #__ | PR #__ | #__ | |
+| Revisión de seguridad (Bandit) | 2 High / 2 Medium / 1 Low (B608, B324, B201, B104) | #1 | 72517d4 (VULN-01 a VULN-10) | #3 | [1.0.7+e3d4239] |
+| Prueba automatizada (OWASP ZAP) | 3 High / 3 Medium / 1 Low (XSS, SQLi, CSRF, cabeceras) | #1 | 72517d4 (VULN-01 a VULN-10) | #3 | [1.0.7+e3d4239] |
+| Gestión de dependencias (Dependabot) | 19 vulnerabilidades en 4 paquetes | #1 | PR #2 (d6f6a73) | #6 | [1.0.7+e3d4239] |
