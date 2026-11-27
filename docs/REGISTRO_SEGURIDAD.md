@@ -48,17 +48,35 @@ y un **commit** (usa el identificador `VULN-xx` en el mensaje del commit).
 
 | Hora | Panel / métrica de Grafana | Qué se observó | Entorno | Clasificación | Acción de respuesta | Verificación |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| ~17:56 | Logins fallidos y exitosos (`login_fallidos_total`, `login_exitosos_total`) | Pico de unos 31 logins fallidos en 1 minuto y 1 login exitoso al final: la clave del administrador fue adivinada por fuerza bruta (`simular_ataque.py`) | Producción 1.0.1+132f192 (código vulnerable) | Incidente de severidad Alta. Autenticación débil (OWASP A07) | Pendiente: despliegue de VULN-03, VULN-04 y VULN-10 (clave fuera del código, hash fuerte y bloqueo con 429) | Pendiente |
+| ~17:56 | Peticiones sospechosas por tipo (`peticiones_sospechosas_total{tipo="sqli"}` y `{tipo="xss"}`) | La app detectó una inyección SQL y un XSS; la salida del ataque confirmó que la inyección expuso la estructura de la base de datos y que el script se reflejó sin escapar | Producción 1.0.1+132f192 | Incidente de severidad Alta. Inyección (OWASP A03) | Pendiente: despliegue de VULN-01 y VULN-02 (consulta parametrizada y salida escapada) | Pendiente |
+| 17:59:20 | Alerta "Fuerza bruta en login (producción)" | La regla pasó a *Alerting* con A≈32,7 (umbral: más de 5 en la ventana) y volvió a *Normal* a las 18:00:10 | Producción 1.0.1+132f192 | Alerta confirmada: detecta la fuerza bruta en menos de 1 minuto | Pendiente | Pendiente |
 
 ## 5. Gestión de dependencias
 
+**Herramientas y política.** Se usa Dependabot (alertas, security updates y version updates), configurado en `.github/dependabot.yml` para el ecosistema `pip`, con revisión diaria y un único PR agrupado (`python-dependencies`). En el pipeline, `pip-audit` verifica las dependencias en la etapa *Dependency Management*. Política de parcheo: toda dependencia con vulnerabilidad conocida se actualiza mediante un PR que se revisa antes de fusionar, y solo se despliega a producción si el build termina en SUCCESS (gate del `Jenkinsfile`).
+
+**Situación inicial.** El build #1, sobre el código base, reportó con `pip-audit` 19 vulnerabilidades en 4 paquetes (Flask, Werkzeug, Jinja2 y gunicorn). El build quedó UNSTABLE y el gate impidió el despliegue a producción.
+
 | Paquete | Versión inicial | Vulnerabilidades (IDs) | Versión final | Origen del cambio (PR de Dependabot / manual) | ¿Pruebas, pip-audit y ZAP siguen OK? Build |
 |---|---|---|---|---|---|
-| Flask | 2.2.2 | | | | |
-| Werkzeug | 2.2.2 | | | | |
-| Jinja2 | 3.1.2 | | | | |
-| gunicorn | 21.2.0 | | | | |
-| prometheus-client | 0.17.1 | | | | |
+| Flask | 2.2.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.3 | PR #2 de Dependabot (grupo `python-dependencies`) | Sí, #__ |
+| Werkzeug | 2.2.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.9 | PR #2 de Dependabot | Sí, #__ |
+| Jinja2 | 3.1.2 | [IDs de `pip-audit.txt`, build #1] | 3.1.6 | PR #2 de Dependabot | Sí, #__ |
+| gunicorn | 21.2.0 | [IDs de `pip-audit.txt`, build #1] | 27.0.1 | PR #2 de Dependabot | Sí, #__ |
+| prometheus-client | 0.17.1 | Sin avisos (actualización de mantenimiento) | 0.26.0 | PR #2 de Dependabot | Sí, #__ |
+| pytest (`requirements-dev.txt`) | 8.3.4 | Sin avisos (solo pruebas, no se instala en despliegues) | 9.2.0 | PR #2 de Dependabot | Sí, #__ |
+
+**Proceso.** Dependabot detectó las versiones vulnerables y abrió seis PR (#1 a #6): el #2 agrupa las seis actualizaciones y los demás son actualizaciones individuales de los mismos paquetes. Se revisó el diff del PR #2 (*Files changed*), se fusionó (commit `d6f6a73`) y los PR individuales #1, #3, #4, #5 y #6 se cerraron sin fusionar para evitar conflictos y builds duplicados.
+
+**Cómo se verificó que no se introdujeron nuevas vulnerabilidades.** Tras la fusión, Jenkins ejecutó el build #__ sobre el código actualizado:
+
+1. Pruebas automatizadas: [N] pruebas aprobadas, sin regresiones por el salto a Flask 3.x ni a `prometheus-client` 0.26.
+2. `pip-audit`: 0 vulnerabilidades conocidas (antes: 19).
+3. Bandit (SAST): 0 High y 0 Medium.
+4. OWASP ZAP (DAST) sobre staging: 0 alertas High y 0 Medium.
+5. Gate de despliegue: build en SUCCESS y etapa *Deploy Producción* ejecutada.
+6. `/version` en producción responde con la versión nueva.
 
 ## 6. Trazabilidad
 
