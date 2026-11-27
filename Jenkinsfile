@@ -1,7 +1,7 @@
 // Jenkinsfile - Pipeline de "Sistema Alumnos" (SecureDev · Evaluación Parcial 3 · OCY1102)
 //
-// Esta es la versión BASE: construye, prueba y despliega en producción.
-// Los marcadores  >>> [ETIQUETA]  indican dónde agregar las etapas de seguridad.
+// Build -> Test -> Security Review (SAST) -> Dependency Management -> Deploy Staging
+//       -> DAST (OWASP ZAP) -> Deploy Producción (solo si todo está limpio)
 pipeline {
     agent any
 
@@ -49,12 +49,61 @@ pipeline {
             }
         }
 
-        // >>> [SEGURIDAD]: aquí van las etapas "Security Review (SAST)" y "Dependency Management"
+        // ---- Revisiones de seguridad continuas ----------------------------------------
+        stage('Security Review (SAST)') {
+            steps {
+                // reports/bandit.json lo lee scripts/trazabilidad.py; bandit.txt es el reporte legible
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh '''#!/bin/bash
+set -o pipefail
+bandit -r app.py -f json -o reports/bandit.json || true
+bandit -r app.py -ll | tee reports/bandit.txt
+'''
+                }
+            }
+        }
 
-        // >>> [ZAP]: aquí van las etapas "Deploy Staging" y "DAST - OWASP ZAP"
+        stage('Dependency Management') {
+            steps {
+                // reports/pip-audit.json lo lee scripts/trazabilidad.py; pip-audit.txt es el reporte legible
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh '''#!/bin/bash
+set -o pipefail
+pip-audit -r requirements.txt -f json -o reports/pip-audit.json || true
+pip-audit -r requirements.txt | tee reports/pip-audit.txt
+'''
+                }
+            }
+        }
+
+        // ---- Pruebas dinámicas sobre un entorno de staging (nunca sobre producción) ----------------
+        stage('Deploy Staging') {
+            steps {
+                sh 'bash scripts/deploy.sh staging 5001'
+            }
+        }
+
+        stage('DAST - OWASP ZAP') {
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    script {
+                        // zap_scan.py termina con código 2 si hay alertas High/Medium
+                        def codigo = sh(returnStatus: true, script: 'python3 scripts/zap_scan.py http://jenkins:5001')
+                        if (codigo == 2) {
+                            unstable('OWASP ZAP encontró alertas High/Medium')
+                        } else if (codigo != 0) {
+                            error("El escaneo de ZAP falló (código ${codigo})")
+                        }
+                    }
+                }
+            }
+        }
 
         stage('Deploy Producción') {
-            // >>> [GATE]: aquí va la condición "when" que protege producción
+            // Gate: solo se despliega a producción si no hubo hallazgos en las etapas anteriores
+            when {
+                expression { currentBuild.currentResult == 'SUCCESS' }
+            }
             steps {
                 sh 'bash scripts/deploy.sh produccion 5000'
                 script { env.PRODUCCION = env.APP_VERSION }
