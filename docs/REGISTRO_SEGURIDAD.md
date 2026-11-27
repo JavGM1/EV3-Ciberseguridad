@@ -1,6 +1,6 @@
 # Registro de seguridad · Sistema Alumnos
 
-Estudiante: ____________________   Repositorio: https://github.com/JavGM1/EV3-Ciberseguridad   Fecha: 27-11-2026
+Estudiante: Javier Galarce   Repositorio: https://github.com/JavGM1/EV3-Ciberseguridad   Fecha: 27-11-2026
 
 Completa este registro a medida que avanzas. Cada fila debe poder seguirse hasta un **build de Jenkins**
 y un **commit** (usa el identificador `VULN-xx` en el mensaje del commit).
